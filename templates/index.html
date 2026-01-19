@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boids Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 20px;
+            backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            max-width: 900px; width: 100%;
+        }
+        h1 { text-align: center; color: white; margin-bottom: 20px; font-size: 2em; }
+        .controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        button {
+            padding: 10px 20px; background: rgba(255, 255, 255, 0.2); border: 2px solid white;
+            border-radius: 5px; color: white; cursor: pointer; font-size: 1em; font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .stats {
+            display: flex; justify-content: space-around; margin-bottom: 15px;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .stat {
+            background: rgba(255, 255, 255, 0.15); padding: 10px 15px; border-radius: 5px;
+            color: white; text-align: center; flex: 1; min-width: 120px;
+        }
+        .stat-label { font-size: 0.9em; opacity: 0.8; }
+        .stat-value { font-size: 1.5em; font-weight: bold; margin-top: 5px; }
+        canvas {
+            display: block; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 10px;
+            width: 100%; aspect-ratio: 4 / 3;
+        }
+        .footer { margin-top: 15px; text-align: center; color: rgba(255, 255, 255, 0.7); font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Boids Simulation</h1>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">Frame</div>
+                <div class="stat-value" id="frame">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Boids</div>
+                <div class="stat-value" id="boid-count">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">FPS</div>
+                <div class="stat-value" id="fps">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Status</div>
+                <div class="stat-value" id="status">Connecting...</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="pause-btn">Pause</button>
+        </div>
+        <canvas id="canvas"></canvas>
+        <div class="footer">WebSocket real-time + Spatial hashing</div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let lastUpdateTime = Date.now();
+        let frameCount = 0, fps = 0;
+        
+        let gridX1 = 100, gridY1 = 100, gridX2 = -100, gridY2 = -100;
+        let boidsData = { b: [], f: 0, p: false };
+        
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        function worldToScreen(x, y) {
+            const sx = ((x - gridX2) / (gridX1 - gridX2)) * canvas.width;
+            const sy = canvas.height - ((y - gridY2) / (gridY1 - gridY2)) * canvas.height;
+            return { sx, sy };
+        }
+        
+        function draw() {
+            ctx.fillStyle = 'rgb(26, 26, 46)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'rgb(240, 240, 240)';
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)';
+            ctx.lineWidth = 1;
+            
+            if (boidsData && boidsData.b && Array.isArray(boidsData.b)) {
+                for (const boid of boidsData.b) {
+                    const screen = worldToScreen(boid[0], boid[1]);
+                    const radius = Math.max(2, boid[4] * 2);
+                    
+                    ctx.beginPath();
+                    ctx.arc(screen.sx, screen.sy, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    const vx = boid[2] * 5, vy = -boid[3] * 5;
+                    ctx.beginPath();
+                    ctx.moveTo(screen.sx, screen.sy);
+                    ctx.lineTo(screen.sx + vx, screen.sy + vy);
+                    ctx.stroke();
+                }
+            }
+            
+            document.getElementById('frame').textContent = boidsData.f || 0;
+            document.getElementById('boid-count').textContent = (boidsData.b && boidsData.b.length) || 0;
+            document.getElementById('status').textContent = boidsData.p ? 'Paused' : 'Running';
+            
+            frameCount++;
+            const now = Date.now();
+            if (now - lastUpdateTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastUpdateTime = now;
+                document.getElementById('fps').textContent = fps;
+            }
+        }
+        
+        function animate() {
+            draw();
+            requestAnimationFrame(animate);
+        }
+        
+        // WebSocket connection
+        const socket = io();
+        
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('status').textContent = 'Running';
+        });
+        
+        socket.on('boids', (data) => {
+            boidsData = data;
+        });
+        
+        socket.on('paused', (isPaused) => {
+            document.getElementById('pause-btn').textContent = isPaused ? 'Resume' : 'Pause';
+        });
+        
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            socket.emit('pause');
+        });
+        
+        animate();
+    </script>
+</body>
+</html>

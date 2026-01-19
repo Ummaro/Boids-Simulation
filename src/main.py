@@ -2,3 +2,5 @@ GRID_X1 = 100
 GRID_Y1 = 100
 GRID_X2 = -100
 GRID_Y2 = -100
+
+__all__ = ['GRID_X1', 'GRID_Y1', 'GRID_X2', 'GRID_Y2']
