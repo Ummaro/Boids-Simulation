@@ -1,24 +1,15 @@
 import threading
 import time
-import random
 from src.app import app, socketio, simulation_state, broadcast_boids
-from src.Boid import Boid
-from src.main import GRID_X1, GRID_Y1, GRID_X2, GRID_Y2
+from src.boid import BoidSystem
 
-def run_simulation(boids):
+def run_simulation(boid_system):
     frame = 0
     
     while True:
         if not simulation_state['paused']:
             with simulation_state['lock']:
-                grid = {}
-                for boid in boids:
-                    boid_grid_pos = boid.get_grid_pos()
-                    grid.setdefault(boid_grid_pos, []).append(boid)
-                
-                for boid in boids:
-                    boid.update(boids, grid)
-                
+                boid_system.update()
                 simulation_state['frame'] = frame
             
             broadcast_boids()
@@ -27,34 +18,12 @@ def run_simulation(boids):
         time.sleep(0.01)
 
 def start_server():
-    boids = []
-    count = 1000
-    for _ in range(count):
-        position = {
-            'x': random.uniform(GRID_X2, GRID_X1),
-            'y': random.uniform(GRID_Y2, GRID_Y1)
-        }
-        velocity = {
-            'x': random.uniform(-0.1, 0.1),
-            'y': random.uniform(-0.1, 0.1)
-        }
-        Boid(
-            position=position,
-            velocity=velocity,
-            max_velocity=1.0,
-            min_velocity=0.5,
-            range_of_view=10,
-            size=2,
-            strength=0.01,
-            repulsion_factor=0.01,
-            random_factor=0.05,
-            slow_factor=0.0005,
-            boids=boids,
-        )
+    boid_system = BoidSystem()
+    boid_system.add_boids(750)
     
-    simulation_state['boids'] = boids
+    simulation_state['boid_system'] = boid_system
     
-    sim_thread = threading.Thread(target=run_simulation, args=(boids,), daemon=True)
+    sim_thread = threading.Thread(target=run_simulation, args=(boid_system,), daemon=True)
     sim_thread.start()
     
     print("Starting Boids Simulation Server...")
