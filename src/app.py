@@ -62,6 +62,35 @@ def handle_set_boid_count(data):
         if boid_system:
             boid_system.set_count(target_count)
 
+@socketio.on('pause_simulation')
+def handle_pause_simulation():
+    """Pause the simulation"""
+    simulation_state['paused'] = True
+    socketio.emit('simulation_paused', {'status': 'paused'}, to=None)
+
+@socketio.on('resume_simulation')
+def handle_resume_simulation():
+    """Resume the simulation"""
+    simulation_state['paused'] = False
+    socketio.emit('simulation_resumed', {'status': 'running'}, to=None)
+
+@socketio.on('reset_simulation')
+def handle_reset_simulation():
+    """Reset the simulation to initial state"""
+    with simulation_state['lock']:
+        boid_system = simulation_state.get('boid_system')
+        if boid_system:
+            # Reset frame counter
+            simulation_state['frame'] = 0
+            # Reset boid system
+            boid_system.reset()
+            # Emit reset confirmation
+            socketio.emit('simulation_reset', {
+                'status': 'reset',
+                'boid_count': boid_system.count,
+                'frame': simulation_state['frame']
+            }, to=None)
+
 def broadcast_boids():
     with simulation_state['lock']:
         boid_system = simulation_state.get('boid_system')

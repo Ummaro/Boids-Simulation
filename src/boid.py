@@ -434,3 +434,17 @@ class BoidSystem:
             # Update all existing boids sizes if default_size changed
             if param == 'default_size':
                 self.sizes[:self.count] = value
+    
+    def reset(self):
+        """Reset the boid system to initial state with same number of boids."""
+        current_count = self.count
+        # Clear all arrays
+        self.positions_x[:] = 0
+        self.positions_y[:] = 0
+        self.velocities_x[:] = 0
+        self.velocities_y[:] = 0
+        self.sizes[:] = 0
+        self.count = 0
+        # Re-add boids at random positions
+        if current_count > 0:
+            self.add_boids(current_count)
