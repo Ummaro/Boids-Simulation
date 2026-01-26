@@ -224,8 +224,8 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         // ===== Activity Tracking =====
-        const ACTIVITY_ENDPOINT = 'http://' + window.location.hostname + ':8000/api/projects/boids/activity';
-        const RESET_ENDPOINT = 'http://' + window.location.hostname + ':8000/api/projects/boids/reset';
+        const ACTIVITY_ENDPOINT = 'https://portfolio.ummaro.fr/api/projects/boids/activity';
+        const RESET_ENDPOINT = 'https://portfolio.ummaro.fr/api/projects/boids/reset';
         
         async function trackActivity() {
             try {
@@ -344,11 +344,26 @@
         }
         
         // Connect to Socket.IO - use explicit URL for proxy support
-        const socketUrl = window.location.port === '5000' ? '/' : 'http://' + window.location.hostname + ':5000';
-        const socket = io(socketUrl);
+        const socketUrl = 'https://' + window.location.hostname;
+        console.log('Socket.IO URL:', socketUrl);
+        const socket = io(socketUrl, {
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: 5,
+            transports: ['websocket', 'polling']
+        });
         
         socket.on('connect', () => {
             console.log('Connected to server');
+        });
+        
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+        
+        socket.on('disconnect', (reason) => {
+            console.warn('Disconnected:', reason);
         });
         
         socket.on('init', (data) => {
@@ -429,19 +444,6 @@
         wrapModeCheckbox.addEventListener('change', (e) => {
             socket.emit('update_param', { param: 'wrap_mode', value: e.target.checked });
             trackActivity();  // Track this interaction
-        });
-
-        // Stop server when leaving the page
-        const stopServerUrl = 'https://portfolio.ummaro.fr/api/projects/boids/stop';
-        
-        window.addEventListener('beforeunload', () => {
-            navigator.sendBeacon(stopServerUrl);
-        });
-        
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                navigator.sendBeacon(stopServerUrl);
-            }
         });
         
         animate();

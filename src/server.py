@@ -28,7 +28,13 @@ def start_server():
     
     print("Starting Boids Simulation Server...")
     print("Open http://localhost:5000 in your browser")
-    socketio.run(app, debug=False, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    socketio.run(
+        app,
+        debug=False,
+        host='0.0.0.0',
+        port=5000,
+        allow_unsafe_werkzeug=True
+    )
 
 if __name__ == "__main__":
     start_server()
