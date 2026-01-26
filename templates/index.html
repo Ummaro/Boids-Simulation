@@ -223,6 +223,23 @@
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
+        // ===== Activity Tracking =====
+        const ACTIVITY_ENDPOINT = 'http://' + window.location.hostname + ':8000/api/projects/boids/activity';
+        const RESET_ENDPOINT = 'http://' + window.location.hostname + ':8000/api/projects/boids/reset';
+        
+        async function trackActivity() {
+            try {
+                fetch(ACTIVITY_ENDPOINT, { method: 'POST' }).catch(() => {});
+            } catch (e) {}
+        }
+        
+        // Track activity on any input
+        document.addEventListener('input', trackActivity, true);
+        document.addEventListener('change', trackActivity, true);
+        
+        // Track initial page load
+        trackActivity();
+        
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         let lastUpdateTime = Date.now();
@@ -326,7 +343,9 @@
             requestAnimationFrame(animate);
         }
         
-        const socket = io();
+        // Connect to Socket.IO - use explicit URL for proxy support
+        const socketUrl = window.location.port === '5000' ? '/' : 'http://' + window.location.hostname + ':5000';
+        const socket = io(socketUrl);
         
         socket.on('connect', () => {
             console.log('Connected to server');
@@ -388,6 +407,7 @@
                 const value = parseFloat(e.target.value);
                 label.textContent = param === 'range_of_view' ? value : value.toFixed(2);
                 socket.emit('update_param', { param: param, value: value });
+                trackActivity();  // Track this interaction
                 
                 if (param === 'max_velocity') maxVelocity = value;
                 if (param === 'min_velocity') minVelocity = value;
@@ -401,12 +421,27 @@
             const count = parseInt(e.target.value);
             boidCountLabel.textContent = count;
             socket.emit('set_boid_count', { count: count });
+            trackActivity();  // Track this interaction
         });
         
         // Wrap mode checkbox
         const wrapModeCheckbox = document.getElementById('wrap_mode');
         wrapModeCheckbox.addEventListener('change', (e) => {
             socket.emit('update_param', { param: 'wrap_mode', value: e.target.checked });
+            trackActivity();  // Track this interaction
+        });
+
+        // Stop server when leaving the page
+        const stopServerUrl = 'https://portfolio.ummaro.fr/api/projects/boids/stop';
+        
+        window.addEventListener('beforeunload', () => {
+            navigator.sendBeacon(stopServerUrl);
+        });
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                navigator.sendBeacon(stopServerUrl);
+            }
         });
         
         animate();

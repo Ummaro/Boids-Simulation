@@ -19,6 +19,35 @@ simulation_state = {
 def index():
     return render_template('index.html')
 
+@app.route('/api/pause', methods=['POST'])
+def api_pause():
+    """HTTP endpoint to pause the simulation"""
+    simulation_state['paused'] = True
+    socketio.emit('simulation_paused', {'status': 'paused'})
+    return {'status': 'paused'}
+
+@app.route('/api/resume', methods=['POST'])
+def api_resume():
+    """HTTP endpoint to resume the simulation"""
+    simulation_state['paused'] = False
+    socketio.emit('simulation_resumed', {'status': 'running'})
+    return {'status': 'running'}
+
+@app.route('/api/reset', methods=['POST'])
+def api_reset():
+    """HTTP endpoint to reset the simulation"""
+    with simulation_state['lock']:
+        boid_system = simulation_state.get('boid_system')
+        if boid_system:
+            simulation_state['frame'] = 0
+            boid_system.reset()
+            socketio.emit('simulation_reset', {
+                'status': 'reset',
+                'boid_count': boid_system.count,
+                'frame': simulation_state['frame']
+            })
+    return {'status': 'reset'}
+
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
