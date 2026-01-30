@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boids Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+        }
+        
+        canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: block;
+        }
+        
+        .controls-panel {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+            max-height: 40vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        .controls-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .controls-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85em;
+        }
+        
+        .stat span:first-child {
+            opacity: 0.6;
+        }
+        
+        button {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        .checkbox-wrapper input {
+            width: 16px; height: 16px;
+            cursor: pointer;
+        }
+        
+        .sliders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px 20px;
+        }
+        
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.8em;
+        }
+        
+        .slider-value {
+            color: #4da6ff;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            accent-color: #4da6ff;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls-panel" id="controls-panel">
+        <div class="controls-header">
+            <div class="controls-header-left">
+                <button id="pause-btn">Pause</button>
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="wrap_mode" checked>
+                    <span>Wrap Mode</span>
+                </label>
+            </div>
+            <div class="stats">
+                <div class="stat"><span>Boids:</span> <span id="boid-count">0</span></div>
+                <div class="stat"><span>FPS:</span> <span id="fps">0</span></div>
+                <div class="stat"><span>Frame:</span> <span id="frame">0</span></div>
+            </div>
+        </div>
+        
+        <div class="sliders-grid">
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Boid Count</span>
+                    <span class="slider-value" id="boidcount-val">750</span>
+                </div>
+                <input type="range" id="boid_count" min="0" max="5000" step="10" value="750">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Pulling Strength</span>
+                    <span class="slider-value" id="strength-val">0.15</span>
+                </div>
+                <input type="range" id="strength" min="0" max="1" step="0.01" value="0.15">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Range of View</span>
+                    <span class="slider-value" id="range-val">3</span>
+                </div>
+                <input type="range" id="range_of_view" min="2" max="50" step="1" value="3">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Max Velocity</span>
+                    <span class="slider-value" id="maxvel-val">1.50</span>
+                </div>
+                <input type="range" id="max_velocity" min="0.0" max="10" step="0.1" value="1.5">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Min Velocity</span>
+                    <span class="slider-value" id="minvel-val">0.50</span>
+                </div>
+                <input type="range" id="min_velocity" min="0" max="10" step="0.1" value="0.5">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Randomness</span>
+                    <span class="slider-value" id="random-val">0.25</span>
+                </div>
+                <input type="range" id="random_factor" min="0" max="1" step="0.05" value="0.25">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Repulsion</span>
+                    <span class="slider-value" id="repulsion-val">0.03</span>
+                </div>
+                <input type="range" id="repulsion_factor" min="0" max="1" step="0.01" value="0.03">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Slowdown Isolated Strength</span>
+                    <span class="slider-value" id="slow-val">1.00</span>
+                </div>
+                <input type="range" id="slow_factor" min="0" max="2" step="0.1" value="1">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Desagregation Strength</span>
+                    <span class="slider-value" id="confusion-val">0.20</span>
+                </div>
+                <input type="range" id="confusion_factor" min="0" max="1" step="0.05" value="0.20">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Outer Boid Weakness</span>
+                    <span class="slider-value" id="distance-val">0.05</span>
+                </div>
+                <input type="range" id="distance_factor" min="0" max="1" step="0.05" value="0.05">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>Boid Size</span>
+                    <span class="slider-value" id="size-val">7.00</span>
+                </div>
+                <input type="range" id="default_size" min="0.5" max="10" step="0.5" value="7">
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>

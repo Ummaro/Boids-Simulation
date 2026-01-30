@@ -1,0 +1,17 @@
+{
+  "name": "boids-simulation-js",
+  "version": "1.0.0",
+  "description": "Interactive Boids simulation running in the browser",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "keywords": ["boids", "simulation", "flocking"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
